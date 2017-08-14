@@ -1,5 +1,5 @@
 
-## nicerlab
+# nicerlab
 
 The nicerlab package offers x-ray timing analysis tools for python. The goal of
 nicerlab is not to present a comprehensive timing library, but rather to give a
@@ -18,7 +18,9 @@ make install
 
 ### Test
 
+```shell
 make test
+```
 
 ### Dependencies
 
