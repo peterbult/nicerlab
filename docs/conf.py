@@ -17,10 +17,18 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
+import os
+import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import guzzle_sphinx_theme
+
+# Add module path
+if os.path.basename(os.getcwd()) == 'docs':
+    ni_path = os.path.abspath(os.path.join('..', 'nicerlab'))
+    sys.path.insert(0,ni_path)
+else:
+    ni_path = os.path.abspath('..')
+    sys.path.insert(0,ni_path)
 
 
 # -- General configuration ------------------------------------------------
@@ -33,7 +41,9 @@ import guzzle_sphinx_theme
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'guzzle_sphinx_theme'
+    'guzzle_sphinx_theme',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
