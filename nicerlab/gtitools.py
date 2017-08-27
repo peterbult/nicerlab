@@ -5,19 +5,42 @@ __all__ = ['durations', 'verify', 'truncate_below', 'truncate_above',
 'truncate', 'good_to_bad', 'bad_to_good', 'merge_gti_or', 'merge_gti_and',
 'merge', 'times_in_interval', 'apply_gti']
 
+
+def _asarray(gti):
+    """
+    Cast a GTI table into a 2d ndarray.
+    
+    Parameters
+    ----------
+    gti: iterable
+        Standard list, numpy array or astropy Table of good time intervals
+
+    Returns
+    -------
+    ndarray
+        The GTI table in ndarray format
+    """
+    arr = np.asarray(gti)
+    if(len(arr) ==0 or len(arr.shape) > 1):
+        return arr
+    else:
+        return arr.view(np.float64).reshape(arr.shape + (-1,))
+
 def durations(gti):
     # Cast as ndarray
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     # Ensure content
     if (len(gti) == 0):
         return []
     else:
-        return gti[:,1]-gti[:,0]
+        start = np.array([row[0] for row in gti])
+        stop  = np.array([row[1] for row in gti])
+        return stop - start
 
 
 def verify(gti):
     # Cast as ndarray
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     # Verify
     if np.any(durations(gti)<0):
         warnings.warn("Warning: negative duration interval found")
@@ -31,7 +54,7 @@ def verify(gti):
 
 def truncate_below(gti, bound):
     # Treat gti as ndarray
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     # Ensure gti is not empty
     if len(gti) is 0:
         return np.zeros((0,2))
@@ -48,7 +71,7 @@ def truncate_below(gti, bound):
 
 def truncate_above(gti, bound):
     # Treat gti as ndarray
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     # Ensure gti is not empty
     if len(gti) is 0:
         return np.zeros((0,2))
@@ -64,7 +87,7 @@ def truncate_above(gti, bound):
 
 
 def truncate(gti, lower=None, upper=None):
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     if lower is not None:
         gti = truncate_below(gti, lower)
 
@@ -76,7 +99,7 @@ def truncate(gti, lower=None, upper=None):
 
 def good_to_bad(gti, lower=float("-inf"), upper=float('inf')):
     # Treat gti as ndarray
-    gti = np.asarray(gti)
+    gti = _asarray(gti)
     # Limit gti to boundaries
     gti = truncate(gti, lower, upper)
     # Ensure gti is not empty
@@ -98,7 +121,7 @@ def good_to_bad(gti, lower=float("-inf"), upper=float('inf')):
 
 def bad_to_good(bti, lower=float("-inf"), upper=float('inf')):
     # Treat the input as a numpy array
-    bti = np.asarray(bti)
+    bti = _asarray(bti)
     # Truncate on the given boundaries
     print(bti, lower, upper)
     bti = truncate(bti, lower, upper)
@@ -124,6 +147,10 @@ def matrix_sort( m, column ):
 
 
 def merge_gti_or( gti1, gti2 ):
+    # Cast as ndarrays
+    gti1 = _asarray(gti1)
+    gti2 = _asarray(gti2)
+
     # Merge the (START,STOP) pairs to a single list
     gti3 = np.concatenate((gti1,gti2))
 
@@ -156,6 +183,10 @@ def merge_gti_or( gti1, gti2 ):
 
 
 def merge_gti_and( gti1, gti2 ):
+    # Cast as ndarrays
+    gti1 = _asarray(gti1)
+    gti2 = _asarray(gti2)
+
     # Merge the (START,STOP) pairs to a single list
     gti3 = np.concatenate((gti1,gti2))
 
@@ -189,6 +220,9 @@ def merge_gti_and( gti1, gti2 ):
 
 
 def merge(gtis, method=None):
+    # Cast all gtis as ndarray
+    gtis = [_asarray(gti) for gti in gtis]
+    # Call method
     if method == "and":
         gti = gtis[0]
         for i in range(1,len(gtis)):
@@ -205,7 +239,7 @@ def merge(gtis, method=None):
         raise ValueError("Method not recognized: use 'and'/'or'")
 
 def where(t, ti):
-    ti = np.asarray(ti)
+    ti = _asarray(ti)
 
     indices = []
     for i,row in enumerate(ti):
@@ -216,7 +250,7 @@ def where(t, ti):
 
 def times_in_interval(times, interval):
     # Cast times as ndarray
-    times = np.asarray(times)
+    times = _asarray(times)
 
     # Allocate output
     indices = []
@@ -234,7 +268,7 @@ def apply_gti(times, gti):
     Applies the given GTI filter to a list of event times.
     """
     # Cast times as ndarray
-    times = np.asarray(times)
+    times = _asarray(times)
 
     # Allocate the indices
     indices = [times_in_interval(times, ti) for ti in gti]

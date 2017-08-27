@@ -4,12 +4,17 @@ sys.path.insert(1, '../')
 import pytest
 import numpy as np
 import nicerlab.gtitools as gtitools
+from astropy.table import Table
 
 @pytest.fixture()
 def gti():
     return [[0.075, 0.099],
             [0.166, 0.237],
             [0.244, 0.389]]
+
+@pytest.fixture()
+def gti_table(gti):
+    return Table(rows=gti, names=['START', 'STOP'])
 
 
 #
@@ -273,5 +278,24 @@ testdata6 = [
 @pytest.mark.parametrize('gti,other,expected', testdata6, indirect=['gti'])
 def test_merge_gti_and(gti, other, expected):
     out = gtitools.merge_gti_and(gti, other)
+    assert np.allclose(np.ravel(out), np.ravel(expected))
+
+
+# Test astropy table input
+# truncate_below()
+#
+@pytest.mark.parametrize('gti_table,bound,expected', testdata1, indirect=['gti_table'])
+def test_table_truncate_below(gti_table,bound,expected):
+    g = gtitools.truncate_below(gti_table, bound)
+    assert np.allclose(g, expected)
+
+@pytest.mark.parametrize('gti_table,other,expected', testdata6, indirect=['gti_table'])
+def test_table_merge_gti_and(gti_table, other, expected):
+    out = gtitools.merge_gti_and(gti_table, other)
+    assert np.allclose(np.ravel(out), np.ravel(expected))
+
+@pytest.mark.parametrize('gti_table,other,expected', testdata6, indirect=['gti_table'])
+def test_table_merge_gti(gti_table, other, expected):
+    out = gtitools.merge([gti_table, other], method='and')
     assert np.allclose(np.ravel(out), np.ravel(expected))
 
