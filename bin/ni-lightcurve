@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+import argparse
+import nicerlab as ni
+from astropy import log
+from tqdm import tqdm
+
+# ----------------------------------------------------------------------
+#   command line interface
+# ----------------------------------------------------------------------
+
+
+parser = argparse.ArgumentParser(description="make a light curve")
+parser.add_argument("metafile", help="list of events files", default=None)
+parser.add_argument('--dt', dest='dt', help='time resolution', default=16, type=float)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+parser.add_argument('--output', dest='outfile', help='output file name', default='lc.dat')
+parser.add_argument('--met', dest='met', help='use Mission Elapsed Time', action='store_true')
+args = parser.parse_args()
+
+# Process arguments
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+if args.dt is None or args.dt < 0:
+    log.error("invalid time resolution")
+    exit(2)
+
+
+# ----------------------------------------------------------------------
+#   main routine
+# ----------------------------------------------------------------------
+
+
+log.info("Loading meta file...")
+meta_file = [line.rstrip('\n') for line in open(args.metafile)]
+
+log.info("Making light curves...")
+with open(args.outfile, 'w') as f:
+    for filename in tqdm(meta_file):
+        # Read data
+        evt, gti = ni.io.read_events_and_gti(filename)
+
+        # Safeguard
+        if len(evt) <= 1:
+            continue
+
+        # Bin events
+        lc = [ni.make_light_curve(evt, dt=args.dt, tstart=t0,
+            tstop=t1)/min(args.dt, t1-t0) for t0,t1 in gti]
+
+        # Write to file
+        for ts in lc:
+            taxis = ts.mjdspace()
+            if args.met:
+                taxis = ts.timespace()
+            for t,y in zip(taxis, ts):
+                f.write("{} {}\n".format(t, y))
+            f.write("\n")
+
+log.info("Light curve ready in: '{}'".format(args.outfile))
+log.info("Done.")
+
