@@ -1,0 +1,196 @@
+#!/usr/bin/env python
+import re
+import os
+import argparse
+import numpy as np
+import nicerlab as ni
+from astropy import log
+from astropy.io import fits
+from astropy.table import Table
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.widgets import SpanSelector, RadioButtons
+
+
+# ----------------------------------------------------------------------
+#   command line interface
+# ----------------------------------------------------------------------
+
+parser = argparse.ArgumentParser(description="make a light curve")
+parser.add_argument("metafile", help="list of events files", default=None)
+parser.add_argument('--dt', dest='dt', help='time resolution', default=16, type=float)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+args = parser.parse_args()
+
+# Process arguments
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+if args.dt is None or args.dt < 0:
+    log.error("invalid time resolution")
+    exit(2)
+
+
+# ----------------------------------------------------------------------
+#   prepare canvas
+# ----------------------------------------------------------------------
+def onselect_bti(xmin, xmax):
+    global gti
+    global gti_patches
+
+    sel = ni.gtitools.bad_to_good([[xmin,xmax]])
+    gti = ni.gtitools.merge([sel,gti], method='and')
+
+    gti_patches = draw_gtis(gti, gti_patches)
+
+def onselect_gti(xmin, xmax):
+    global gti
+    global gti_patches
+    global ax
+
+    sel = [[xmin,xmax]]
+    gti = ni.gtitools.merge([sel,gti], method='or')
+
+    gti_patches = draw_gtis(gti, gti_patches)
+
+def draw_gtis(gti, gti_patches=None):
+    if gti_patches is not None:
+        # Clean out old patches
+        for rect in gti_patches:
+            rect.remove()
+
+    # Clean out memory
+    gti_patches = []
+
+    # Make new patches
+    for row in gti:
+        rect = patches.Rectangle((row[0],ymin), row[1]-row[0], yrange,
+                                 linewidth=1, edgecolor='green',
+                                 facecolor='green', alpha=0.25)
+        gti_patches.append(rect)
+
+    # Plot the patches
+    for rect in gti_patches:
+        ax.add_patch(rect)
+
+    return gti_patches
+
+def prepare_canvas(ymin, ymax):
+    plt.ion()
+    fig = plt.figure(figsize=(12,6))
+    ax = fig.add_subplot(111, facecolor='#FFFFCC')
+    
+    span_bti = SpanSelector(ax, onselect_bti, 'horizontal', useblit=True,
+                            rectprops=dict(alpha=0.5, facecolor='red'),
+                            button=1, span_stays=True)
+
+    span_gti = SpanSelector(ax, onselect_gti, 'horizontal', useblit=True,
+                            rectprops=dict(alpha=0.5, facecolor='green'),
+                            button=3, span_stays=True)
+
+    return fig, ax, span_bti, span_gti
+
+
+# ----------------------------------------------------------------------
+#   support functions
+# ----------------------------------------------------------------------
+
+def partial_match(ans, option):
+    return re.match("^"+ans, option)
+
+def minmax(data):
+    mi = np.min([np.min(ts) for ts in lc]) * 0.90
+    ma = np.max([np.max(ts) for ts in lc]) * 1.10
+    return mi,ma
+
+
+def push_gti(filename, gti, clobber):
+    inputfile = filename
+    outputfile = filename
+
+    # Construct an output filename if needed
+    if not clobber:
+        base = os.path.basename(filename)
+        temp, ext2 = os.path.splitext( base )
+        name, ext1 = os.path.splitext( temp )
+        outputfile = os.path.join(os.path.dirname(filename), name+"_sel"+ext1+ext2)
+
+    log.info("Writing gti selection to {}[{}]".format(os.path.basename(outputfile), "GTI"))
+
+    # Edit the fits file GTI table
+    hdu = fits.open(inputfile)
+    hdu[2] = fits.BinTableHDU(data=Table(rows=gti, names=['START', 'STOP']), 
+                              header=hdu[2].header, name='GTI')
+    hdu.writeto(outputfile, overwrite=True)
+
+
+# ----------------------------------------------------------------------
+#   main routine
+# ----------------------------------------------------------------------
+
+if not args.clobber:
+    log.info("No clobber: adjustments are written to '<filename>_sel.evt'")
+
+log.info("Loading meta file...")
+metafile = [line.rstrip('\n') for line in open(args.metafile)]
+
+log.info("Making light curves...")
+
+log.info("Click and drag the <left> mouse button to add good time")
+log.info("Click and drag the <right> mouse button to remove good time")
+log.info("Type 'undo' to reset all selections")
+log.info("Type 'quit' to exit")
+log.info("Press <enter> to continue to the next file")
+
+state = 0
+while state < len(metafile):
+    # Set the iteration
+    filename = metafile[state]
+
+    # Read data
+    evt, gti = ni.io.read_events_and_gti(filename)
+
+    # Safeguard
+    if len(evt) <= 1:
+        continue
+
+    # Bin events
+    lc = [ni.make_light_curve(evt, dt=args.dt, tstart=t0, tstop=t1)/min(args.dt, t1-t0) 
+            for t0,t1 in gti]
+    # Remove empty light curves
+    lc = [ts for ts in lc if ts.size != 0]
+
+    # Compute the vertical span
+    ymin, ymax = minmax(lc)
+    yrange = ymax - ymin
+
+    # Initalize the figure
+    fig, ax, span_bti, span_gti = prepare_canvas(ymin, ymax)
+
+    # Plot light curve
+    for ts in lc:
+        ax.plot(ts.timespace(), ts, '-xk')
+
+    # Plot GTI 
+    gti_patches = draw_gtis(gti)
+
+    # Finalize the plot
+    plt.ylim(ymin,ymax)
+    plt.show()
+
+    # Wait for feedback
+    ans = input("> ")
+    plt.close() 
+
+    if ans != "" and partial_match(ans, "quit"):
+        exit()
+    elif ans != "" and partial_match(ans, "undo"):
+        continue
+
+    # Push the edited GTI to file
+    push_gti(filename, gti, args.clobber)
+    # Advance
+    state += 1
+
