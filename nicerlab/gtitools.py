@@ -123,7 +123,6 @@ def bad_to_good(bti, lower=float("-inf"), upper=float('inf')):
     # Treat the input as a numpy array
     bti = _asarray(bti)
     # Truncate on the given boundaries
-    print(bti, lower, upper)
     bti = truncate(bti, lower, upper)
     # Special case on empty input
     if bti.size is 0:
