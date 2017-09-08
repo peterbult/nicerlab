@@ -64,6 +64,7 @@ User Documentation
    data_structures
    io
    utilities
+   scripts
 
 
 Index
