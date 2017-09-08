@@ -11,7 +11,7 @@ setup(
     license='MIT',
 
     packages=find_packages(),
-    scripts=['bin/ni-lightcurve'],
+    scripts=['bin/ni-lightcurve', 'bin/gti-select'],
     install_requires=[
         'numpy>=1.13'
         'astropy>=2.0'
