@@ -20,7 +20,7 @@
 import os
 import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import guzzle_sphinx_theme
+# import guzzle_sphinx_theme
 
 # Add module path
 if os.path.basename(os.getcwd()) == 'docs':
@@ -41,7 +41,7 @@ else:
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'guzzle_sphinx_theme',
+    # 'guzzle_sphinx_theme',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon'
 ]
@@ -96,9 +96,9 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_translator_class = 'guzzle_sphinx_theme.HTMLTranslator'
-html_theme_path = guzzle_sphinx_theme.html_theme_path()
-html_theme = 'guzzle_sphinx_theme'
+# html_translator_class = 'guzzle_sphinx_theme.HTMLTranslator'
+# html_theme_path = guzzle_sphinx_theme.html_theme_path()
+# html_theme = 'guzzle_sphinx_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -106,7 +106,7 @@ html_theme = 'guzzle_sphinx_theme'
 #
 html_theme_options = {
     # 'index_template': 'special_index.html',
-    'project_nav_name': 'nicerlab'
+    # 'project_nav_name': 'nicerlab'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
