@@ -8,7 +8,7 @@ are intended to be used as building blocks for a customized python-based pipelin
 
 ### Usage
 
-See docs.
+See [docs](http://nicerlab.readthedocs.io/en/latest/index.html).
 
 ### Install
 
