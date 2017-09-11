@@ -7,6 +7,7 @@ help:
 	@echo " * test     [run tests]"
 
 install:
+	pip install -r requirements.txt
 	pip install .
 
 upgrade:

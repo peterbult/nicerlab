@@ -12,10 +12,6 @@ setup(
 
     packages=find_packages(),
     scripts=['bin/ni-lightcurve', 'bin/gti-select'],
-    install_requires=[
-        'numpy>=1.13'
-        'astropy>=2.0'
-    ],
     zip_safe=False
 )
 
