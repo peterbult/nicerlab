@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+import argparse
+import shutil
+import numpy as np
+import nicerlab as ni
+from astropy import log
+from astropy.table import Table
+from tqdm import tqdm
+
+# ----------------------------------------------------------------------
+#   command line interface
+# ----------------------------------------------------------------------
+
+
+parser = argparse.ArgumentParser(description="make a power spectrum")
+parser.add_argument("metafile", help="list of events files", default=None)
+parser.add_argument('--tseg', dest='tseg', help='time segment length [16]', default=16, type=float)
+parser.add_argument('--dt', dest='dt', help='time resolution [1/8192]', default=1/8192, type=float)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+parser.add_argument('--output', dest='outfile', help='output file name', default='pds.fits')
+parser.add_argument('--gti', help='select custom gti table', default=None)
+args = parser.parse_args()
+
+# Process arguments
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+if args.tseg is None or args.tseg < 0:
+    log.error("invalid segment time")
+    exit(2)
+
+
+# ----------------------------------------------------------------------
+#   main routine
+# ----------------------------------------------------------------------
+
+
+## Get the meta list
+log.info("Loading meta file...")
+meta_file = [line.rstrip('\n') for line in open(args.metafile)]
+
+for n,filename in enumerate(meta_file):
+    # Read data
+    log.info("Reading fits file '{}'...".format(filename))
+    evt = ni.io.read_events(filename)
+
+    # Safeguard
+    if len(evt) <= 1:
+        log.info("Empty event list: skipping file")
+        continue
+
+    # tb, keys = ni.io.read_from_fits(filename, cols=['TIME'], ext='EVENTS',
+                    # keywords=['MJDREFI', 'MJDREFF', 'TSTART', 'TSTOP'])
+
+    # mjd = keys['MJDREFI'] + keys['MJDREFF'] + keys['TSTART']/86400.0
+    # evt = ni.Eventlist(tb[:,0], tstart=keys['TSTART'], tstop=keys['TSTOP'], mjd=mjd)
+   
+    # Read the GTI
+    gti = [[]]
+    if args.gti is None:
+        gti = ni.io.read_gti(filename)
+    else:
+        this_ti = [[evt.tstart, evt.tstop]]
+        other_ti = Table.read(args.gti, format='ascii', names=['START', 'STOP'])
+        # other_ti = np.array([
+            # np.array(other_tb['START']),
+            # np.array(other_tb['STOP'])
+        # ]).T
+        gti = ni.gtitools.merge([this_ti,other_ti], method='and')
+
+
+    # Bin events into a light curve
+    log.info("Making light curves...")
+    lc = [ni.make_light_curve(evt, dt=args.dt, tstart=t0, tstop=t1) for t0,t1 in gti]
+
+    # FFT light curves
+    log.info("Making power spectra...")
+    pds = [ni.make_power_spectrum(ts, dt=args.dt, tseg=args.tseg) for ts in lc]
+
+    # Create output folder
+    if os.path.isdir('pds'):
+        shutil.rmtree('pds')
+    os.mkdir('pds')
+
+    # Write to file
+    log.info("Writing pds to file...")
+    for i,[p,ts] in enumerate(zip(pds,lc)):
+        if len(p) < 1:
+            continue
+        ni.io.write_pds(p, "pds/ni_pds{:02d}_{:02d}.fits".format(n,i), mjd=ts.mjd, clobber=True)
+
