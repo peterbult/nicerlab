@@ -2,19 +2,25 @@ import os
 import numpy as np
 from astropy.io import fits
 
-def write_pds(pds, filename='pds.fits', mjd=0, clobber=False):
+def write_pds(pds, filename='pds.fits', mjd=None, clobber=False):
+    # Handle clobber
     if os.path.isfile(filename):
         if clobber:
             os.remove(filename)
         else:
             raise IOError("cannot write spectrum: file exists")
 
+    # Extract the mjd
+    mjd = getattr(pds, 'mjd', None)
+    if mjd is None:
+        mjd = 0
+
     # Reconstruct the counts
     counts = 0.5 * pds[:,0]
     # Extract tseg
     tseg = 1.0 / pds.df
     # Fake MJDs
-    mjdvec = mjd + np.arange(len(counts)) * (tseg/86400.0)
+    mjdvec = pds.mjd + np.arange(len(counts)) * (tseg/86400.0)
     
     # Construct the primary HDU
     prihdr = fits.Header()
