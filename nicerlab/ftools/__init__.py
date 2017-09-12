@@ -5,4 +5,4 @@ from .ftdelete import ftdelete
 from .ftcopy   import ftcopy
 from .ftappend import ftappend
 from .ftsplit  import ftsplit
-
+from .xte      import xtefilter, maketime
