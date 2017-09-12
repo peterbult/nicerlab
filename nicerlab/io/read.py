@@ -57,8 +57,18 @@ def read_events(filename):
     filename: string
         Input filename
     """
+
+    ext='EVENTS'
+
+    try:
+        telescop = fits.getval(filename, 'TELESCOP', ext=1)
+        if telescop == 'XTE':
+            ext=1
+    except Exception as e:
+        print(e)
+        pass
     
-    evt, keys = read_from_fits(filename, cols=['TIME'], ext='EVENTS',
+    evt, keys = read_from_fits(filename, cols=['TIME'], ext=ext,
             keywords=['MJDREFI', 'MJDREFF', 'TSTART', 'TSTOP'])
 
     mjd = keys['MJDREFI'] + keys['MJDREFF'] + keys['TSTART']/86400.0
