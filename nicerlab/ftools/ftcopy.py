@@ -1,20 +1,7 @@
 
 import os
 import subprocess
-
-class FtoolsError(Exception):
-    """Error in FTOOLS execution"""
-
-    def __init__(self, code, expression, message):
-        self.code = code
-        self.expression = expression
-        self.message = message
-        
-def clobber_str(clobber):
-    if (clobber == True):
-        return 'yes'
-    else:
-        return 'no'
+from nicerlab.ftools.ftutils import *
 
 def ftcopy( inputfile, outputfile, ext=1, copyall=False, clobber=False):
     """

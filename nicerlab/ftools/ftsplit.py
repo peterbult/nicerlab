@@ -2,6 +2,7 @@
 import os
 from astropy.io.fits import getheader
 from nicerlab.ftools import ftcopy, ftdelete, ftselect, ftappend
+from nicerlab.ftools.ftutils import *
 
 def ftsplit(inputfile, outputfile, clobber=False, verbose=False):
     """

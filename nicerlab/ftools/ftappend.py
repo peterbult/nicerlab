@@ -1,15 +1,8 @@
 
 import os
 import subprocess
+from nicerlab.ftools.ftutils import *
 
-class FtoolsError(Exception):
-    """Error in FTOOLS execution"""
-
-    def __init__(self, code, expression, message):
-        self.code = code
-        self.expression = expression
-        self.message = message
-        
 def ftappend( inputfile, outputfile, ext=1):
     """
     Calls ftappend in a subprocess. Returns the outputfile name on success and
