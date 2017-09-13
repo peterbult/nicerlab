@@ -1,3 +1,4 @@
+from glob import glob
 from setuptools import setup, find_packages
 
 setup(  
@@ -11,7 +12,7 @@ setup(
     license='MIT',
 
     packages=find_packages(),
-    scripts=['bin/ni-lightcurve', 'bin/gti-select'],
+    scripts=glob('bin/*'),
     zip_safe=False
 )
 
