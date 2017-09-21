@@ -17,7 +17,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description="make a power spectrum")
 parser.add_argument("metafile", help="list of events files", default=None)
 parser.add_argument('--tseg', dest='tseg', help='time segment length [16]', default=16, type=float)
-parser.add_argument('--dt', dest='dt', help='time resolution [1/8192]', default=1/8192, type=float)
+parser.add_argument('--dt', dest='dt', help='time resolution [1/8192]', default='1/8192')
 parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
 parser.add_argument('--output', dest='outfile', help='output file name', default='pds.fits')
 parser.add_argument('--gti', help='select custom gti table', default=None)
@@ -31,6 +31,8 @@ if args.metafile is None:
 if args.tseg is None or args.tseg < 0:
     log.error("invalid segment time")
     exit(2)
+
+args.dt = float(eval(args.dt))
 
 
 # ----------------------------------------------------------------------
