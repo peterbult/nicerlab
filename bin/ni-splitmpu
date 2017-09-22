@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+from astropy import log
+from nicerlab import ftools
+
+# ----------------------------------------------------------------------
+#   support functions
+# ----------------------------------------------------------------------
+
+def replace_mpu_number(s, num):
+    i = s.find('mpu')
+    return s[:i+3] + str(num) + s[i+4:]
+
+# ----------------------------------------------------------------------
+#   command line interface
+# ----------------------------------------------------------------------
+
+
+parser = argparse.ArgumentParser(description="scrub gti's")
+parser.add_argument("metafile", help="list of event files", default=None)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+args = parser.parse_args()
+
+# Process arguments
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+# ----------------------------------------------------------------------
+#   main routine
+# ----------------------------------------------------------------------
+
+log.info("Cleaning workspace...")
+if os.path.isfile('tmp.evt'):
+    os.unlink('tmp.evt')
+
+log.info("Loading meta file...")
+meta_file = [line.rstrip('\n') for line in open(args.metafile)]
+
+log.info("Iterating over the event files")
+for filename in meta_file:
+    if not os.path.isfile(filename):
+        log.warning('could not open{}: continuing with next entry'.format(filename))
+        continue
+
+    # Link the file locally
+    os.symlink(filename, 'tmp.evt')
+
+    log.info("Splitting file '{}'".format(os.path.basename(filename)))
+    for i in range(7):
+        log.info(">>> Extracting mpu{}".format(i))
+
+        # Construct the output file name
+        out = replace_mpu_number(filename, i)
+        
+        # Filter on det_id
+        ftools.ftselect(filename, out, ext='EVENTS',
+                expression='({}<=DET_ID).and.(DET_ID<{})'.format(i*10, (i+1)*10),
+                copyall=True, clobber=True)
+
+    # Clean up
+    os.unlink('tmp.evt')
+
