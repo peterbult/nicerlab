@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+
+import sys
+import os.path
+import argparse
+from tqdm import tqdm
+from subprocess import call
+from astropy import log
+from glob import glob
+
+# Custom helper functions
+def prompt( q ):
+    answer = input(q);
+    try:
+        return float(answer)
+    except ValueError:
+        return prompt(q)
+
+def up_dir(d, n):
+    if (n==1): 
+        return os.path.dirname(d)
+    else: 
+        return up_dir(os.path.dirname(d),n-1)
+
+# Define a 'reverse-replace()' method
+def rreplace(s, old, new, occurrence=1):
+     li = s.rsplit(old, occurrence)
+     return new.join(li)
+
+# |--------------------
+
+# Parse command line
+parser = argparse.ArgumentParser(description="Run barycorr for NICER")
+parser.add_argument("metafile", help="list of events files", default=None)
+parser.add_argument('--ra', dest='RA', help='Source RA', default=None, type=float)
+parser.add_argument('--dec',dest='DEC',help='Source DEC',default=None, type=float)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+args = parser.parse_args()
+
+# Process args
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+if not os.path.isfile(args.metafile):
+    log.error("{} is not a file".format(args.metafile))
+    exit(2)
+
+if args.RA is None or args.DEC is None:
+    print("> Give source coordinates (in decimal degrees)")
+    if args.RA is None:
+        args.RA = prompt("> [ RA] ")
+
+    if args.DEC is None:
+        args.DEC = prompt("> [DEC] ")
+
+# Validate input
+log.info("Using RA, DEC: {0: f}, {1: f}".format(args.RA, args.DEC))
+
+# Get the meta list
+log.info("Loading meta file...")
+meta_file = [line.rstrip('\n') for line in open(args.metafile)]
+
+# Create a bary metafile
+barymeta = open('bary.meta', 'w')
+
+# Iterate over each file in the meta list
+log.info("Executing barycorr calls...")
+for line in tqdm(meta_file):
+    # Construct the output file name
+    base = os.path.basename(line)
+    temp, ext2 = os.path.splitext( base )
+    name, ext1 = os.path.splitext( temp )
+    out = os.path.dirname(line)+"/"+name+"_bary"+ext1+ext2
+
+    barymeta.write("{}\n".format(out))
+
+    if os.path.isfile(out) and not args.clobber:
+        continue
+
+    # Construct the orbit filename
+    stem  = up_dir(line,3)
+    obsid = os.path.basename( stem )
+    auxil = glob(stem+"/auxil/*.orb*")[0]
+
+    # Construct the command line options
+    options = " infile="    + line
+    options+= " outfile="   + out
+    options+= " orbitfiles="+ auxil
+    options+= " ra="        + str(args.RA)
+    options+= " dec="       + str(args.DEC)
+    options+= " refframe=ICRS barytime=YES clobber=YES"
+
+    # Execute the command
+
+    os.system("barycorr "+options+" >> /tmp/bary.tmp")
+
+barymeta.close()
+
+log.info("All done!")
