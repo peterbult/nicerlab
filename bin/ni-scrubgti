@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+from astropy import log
+from nicerlab import ftools
+
+# ----------------------------------------------------------------------
+#   command line interface
+# ----------------------------------------------------------------------
+
+parser = argparse.ArgumentParser(description="scrub gtis")
+parser.add_argument("metafile", help="list of event files", default=None)
+parser.add_argument("--dt", dest='dt', help="scrub gap size [10]", default=10, type=float)
+parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+parser.add_argument('--workdir', dest='workdir', help='work directory', default='scrub')
+parser.add_argument('--filter', dest='filter', help='filter fast only', action='store_true')
+args = parser.parse_args()
+
+# Process arguments
+if args.metafile is None:
+    log.error("give meta file")
+    exit(1)
+
+if args.dt is None or args.dt < 0:
+    log.error("invalid time resolution")
+    exit(2)
+
+if not os.path.isdir(args.workdir):
+    os.mkdir(args.workdir)
+
+# ----------------------------------------------------------------------
+#   main routine
+# ----------------------------------------------------------------------
+
+if os.path.isfile('tmp.evt'):
+    os.unlink('tmp.evt')
+
+log.info("Loading meta file...")
+meta_file = [line.rstrip('\n') for line in open(args.metafile)]
+
+log.info("Iterating over the event files")
+with open('scrub.meta', 'w') as fout:
+    for filename in meta_file:
+        # Assert file status
+        if not os.path.isfile(filename):
+            log.warning('could not open{}: continuing with next entry'.format(filename))
+            continue
+
+        # Construct the output file name
+        base = os.path.basename(filename)
+        outbase = base.replace('_cl', '_scrub_cl')
+        outfile = os.path.join(args.workdir, outbase)
+
+        # Handle clobbering
+        if os.path.isfile(outfile):
+            if args.clobber:
+                os.remove(outfile)
+            else:
+                continue
+
+        # Link the input file locally
+        os.symlink(filename, 'tmp.evt')
+
+        # Scrub the gti
+        ftools.ftselect('tmp.evt', outfile, ext='GTI',
+                        expression='STOP-START>={}'.format(args.dt),
+                        copyall=True, clobber=True)
+
+        # Create  a local copy of the event file
+        if (args.filter):
+            log.info("Applying bitfilter to '{}'".format(base))
+            ftools.ftselect(outfile, outfile, ext='EVENTS',
+                            expression="(EVENT_FLAGS==bxxx11000)",
+                            copyall=True, clobber=True)
+
+        # Update the output meta file
+        fout.write("{}\n".format(os.path.abspath(outfile)))
+
+        # Clean up
+        os.unlink('tmp.evt')
+
