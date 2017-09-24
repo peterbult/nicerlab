@@ -21,6 +21,7 @@ parser = argparse.ArgumentParser(description="make a light curve")
 parser.add_argument("metafile", help="list of events files", default=None)
 parser.add_argument('--dt', dest='dt', help='time resolution', default=16, type=float)
 parser.add_argument('--clobber', dest='clobber', help='enable clobber', action='store_true')
+parser.add_argument('--mark', dest='mark', help='set file file [sel]', default='sel')
 args = parser.parse_args()
 
 # Process arguments
@@ -115,7 +116,7 @@ def push_gti(filename, gti, clobber):
         base = os.path.basename(filename)
         temp, ext2 = os.path.splitext( base )
         name, ext1 = os.path.splitext( temp )
-        outputfile = os.path.join(os.path.dirname(filename), name+"_sel"+ext1+ext2)
+        outputfile = os.path.join(os.path.dirname(filename), name+"_"+args.mark+ext1+ext2)
 
     log.info("Writing gti selection to {}[{}]".format(os.path.basename(outputfile), "GTI"))
 
